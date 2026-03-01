@@ -107,6 +107,13 @@ enum RenewalStatus {
   NOT_APPLICABLE
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  REJECTED
+}
+
 // ─── MODELS ───────────────────────────────────────────────────
 
 model User {
@@ -163,6 +170,26 @@ model AuditLog {
   @@index([action])
   @@index([entityType])
   @@index([createdAt])
+}
+
+model IncomingLead {
+  id          String     @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  message     String
+  source      String     @default("website") // website, landing_page, etc.
+  pageUrl     String?    // which page they came from
+  status      LeadStatus @default(NEW)
+  notes       String?    // admin notes
+  businessId  String?    // linked business if converted
+  assignedToId String?   // assigned sales rep
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
 }
 
 model City {
