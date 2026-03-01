@@ -1,0 +1,4 @@
+businessName,ownerName,phone,alternatePhone,category,cityName,areaName,address,hasWebsite,hasGBP,services,priority,status,visitType,followUpDate,estimatedValue,notes
+Radiance Salon,Priya Sharma,9876543210,,SALON,Bangalore,Koramangala,100 Feet Road,false,false,"WEBSITE,GBP",HIGH,NOT_VISITED,OFFLINE,,25000,Interested in digital presence
+FitZone Gym,Rahul Verma,9876543211,9876543299,GYM,Bangalore,Indiranagar,12th Main Road,true,false,WEBSITE,MEDIUM,VISITED,CALL,2026-04-15,15000,Has existing website needs redesign
+Hotel Sunrise,Amit Patel,9876543212,,HOTEL,Mysore,Vijayanagar,JLB Road,false,true,"WEBSITE,SEO,SOCIAL_MEDIA",HIGH,INTERESTED,OFFLINE,2026-04-10,50000,Premium hotel looking for full digital package

@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  SALES
+}
+
+enum BusinessCategory {
+  SALON
+  GYM
+  HOTEL
+  CLINIC
+  RESTAURANT
+  SCHOOL
+  COLLEGE
+  RETAIL
+  PHARMACY
+  AUTOMOBILE
+  REAL_ESTATE
+  COACHING
+  OTHER
+}
+
+enum ServiceType {
+  WEBSITE
+  GBP
+  ERP
+  SOCIAL_MEDIA
+  SEO
+  LOGO_BRANDING
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum BusinessStatus {
+  NOT_VISITED
+  VISITED
+  INTERESTED
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+  FOLLOW_UP
+}
+
+enum VisitType {
+  CALL
+  OFFLINE
+  WHATSAPP
+}
+
+enum ActivityType {
+  CALL
+  VISIT
+  FOLLOW_UP
+  WHATSAPP
+  EMAIL
+  DEMO
+}
+
+enum ActivityOutcome {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+  NO_RESPONSE
+  CALLBACK_REQUESTED
+}
+
+enum FailureReason {
+  PRICE_ISSUE
+  TRUST_ISSUE
+  ALREADY_HAS_SERVICE
+  NOT_DECISION_MAKER
+  NOT_INTERESTED
+  BAD_TIMING
+  WENT_TO_COMPETITOR
+  NO_BUDGET
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum RenewalStatus {
+  PENDING
+  CONTACTED
+  RENEWED
+  CHURNED
+  NOT_APPLICABLE
+}
+
+// ─── MODELS ───────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  phone     String?
+  role      Role     @default(SALES)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedCities City[]     @relation("AssignedSalesRep")
+  businesses     Business[] @relation("CreatedByUser")
+  activities     Activity[]
+  deals          Deal[]
+
+  @@index([clerkId])
+  @@index([role])
+}
+
+model City {
+  id         String   @id @default(cuid())
+  name       String
+  state      String   @default("Karnataka")
+  totalShops Int      @default(0)
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  assignedTo   User?   @relation("AssignedSalesRep", fields: [assignedToId], references: [id])
+  assignedToId String?
+
+  areas      Area[]
+  businesses Business[]
+
+  @@unique([name, state])
+  @@index([state])
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  name      String
+  cityId    String
+  createdAt DateTime @default(now())
+
+  city       City       @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  businesses Business[]
+
+  @@unique([name, cityId])
+  @@index([cityId])
+}
+
+model Business {
+  id              String           @id @default(cuid())
+  businessName    String
+  ownerName       String
+  phone           String
+  alternatePhone  String?
+  category        BusinessCategory
+  address         String?
+  googleMapsLink  String?
+  hasWebsite      Boolean          @default(false)
+  existingWebsite String?
+  hasGBP          Boolean          @default(false)
+  services        ServiceType[]
+  priority        Priority         @default(MEDIUM)
+  status          BusinessStatus   @default(NOT_VISITED)
+  visitType       VisitType?
+  followUpDate    DateTime?
+  failureReason   FailureReason?
+  estimatedValue  Float?
+  notes           String?
+  mistakeNotes    String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  city        City   @relation(fields: [cityId], references: [id])
+  cityId      String
+  area        Area?  @relation(fields: [areaId], references: [id])
+  areaId      String?
+  createdBy   User   @relation("CreatedByUser", fields: [createdById], references: [id])
+  createdById String
+
+  activities Activity[]
+  deals      Deal[]
+
+  @@index([cityId])
+  @@index([areaId])
+  @@index([status])
+  @@index([priority])
+  @@index([followUpDate])
+  @@index([createdById])
+  @@index([category])
+}
+
+model Activity {
+  id               String          @id @default(cuid())
+  type             ActivityType
+  outcome          ActivityOutcome
+  remark           String
+  nextFollowUpDate DateTime?
+  createdAt        DateTime        @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+
+  @@index([businessId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Deal {
+  id            String        @id @default(cuid())
+  service       ServiceType
+  amount        Float
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAmount    Float         @default(0)
+  signedDate    DateTime      @default(now())
+  deliveryDate  DateTime?
+  invoiceNumber String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Renewal tracking
+  contractDurationMonths Int           @default(12)
+  renewalDate            DateTime?
+  renewalStatus          RenewalStatus @default(PENDING)
+  renewalNotes           String?
+
+  // Renewal chain (parent → child)
+  parentDealId String?
+  parentDeal   Deal?  @relation("RenewalChain", fields: [parentDealId], references: [id])
+  renewedDeals Deal[] @relation("RenewalChain")
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+
+  @@index([businessId])
+  @@index([userId])
+  @@index([paymentStatus])
+  @@index([signedDate])
+  @@index([renewalDate])
+  @@index([renewalStatus])
+  @@index([parentDealId])
+}
