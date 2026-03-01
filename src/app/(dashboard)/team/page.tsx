@@ -22,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatCard } from '@/components/shared/stat-card';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -30,6 +31,7 @@ import { formatCurrency } from '@/lib/utils';
 import {
   Users,
   UserCheck,
+  UserPlus,
   TrendingUp,
   MapPin,
   Trophy,
@@ -66,6 +68,12 @@ export default function TeamPage() {
   const [editRole, setEditRole] = useState('');
   const [editCityIds, setEditCityIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState('SALES');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!userLoading && dbUser && dbUser.role === 'SALES') {
@@ -131,6 +139,41 @@ export default function TeamPage() {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newName || !newEmail || !newPassword) {
+      toast.error('Please fill all fields');
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName,
+          email: newEmail,
+          password: newPassword,
+          role: newRole,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create user');
+      }
+      toast.success('Team member created successfully');
+      setShowAddDialog(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewRole('SALES');
+      fetchTeam();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const activeSalesReps = team.filter((u) => u.role === 'SALES' && u.isActive).length;
   const totalRevenue = team.reduce((sum, u) => sum + (u.revenue ?? 0), 0);
   const avgDeals =
@@ -168,6 +211,14 @@ export default function TeamPage() {
       <PageHeader
         title="Team Management"
         description="View team performance and manage assignments."
+        action={
+          dbUser?.role === 'ADMIN' ? (
+            <Button onClick={() => setShowAddDialog(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Member
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Stats */}
@@ -277,6 +328,64 @@ export default function TeamPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Member Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Full Name</Label>
+              <Input
+                placeholder="John Doe"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                placeholder="john@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Password</Label>
+              <Input
+                type="password"
+                placeholder="Min 8 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={newRole} onValueChange={setNewRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SALES">Sales</SelectItem>
+                  <SelectItem value="MANAGER">Manager</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateUser} disabled={creating}>
+                {creating ? 'Creating...' : 'Create Member'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>

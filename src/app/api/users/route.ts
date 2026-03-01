@@ -1,8 +1,11 @@
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, isAdminOrManager } from '@/lib/auth';
+import { requireAuth, isAdmin, isAdminOrManager } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
+import { z } from 'zod';
+import { clerkClient } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +83,76 @@ export async function GET() {
     }
     if (error instanceof Error && error.message === 'Unauthorized') return errorResponse('Unauthorized', 401);
     if (error instanceof Error && error.message === 'Forbidden') return errorResponse('Forbidden', 403);
+    console.error('[API Error]', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+const CreateUserSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['ADMIN', 'MANAGER', 'SALES']),
+});
+
+// POST /api/users - Create a new team member (ADMIN only)
+export async function POST(request: NextRequest) {
+  try {
+    const user = await requireAuth();
+
+    if (!isAdmin(user)) {
+      return errorResponse('Forbidden', 403);
+    }
+
+    const body = await request.json();
+    const data = CreateUserSchema.parse(body);
+
+    const nameParts = data.name.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || undefined;
+
+    // Create user in Clerk
+    const client = await clerkClient();
+    const clerkUser = await client.users.createUser({
+      emailAddress: [data.email],
+      password: data.password,
+      firstName,
+      lastName,
+    });
+
+    // Create user in database
+    const dbUser = await prisma.user.create({
+      data: {
+        clerkId: clerkUser.id,
+        name: data.name.trim(),
+        email: data.email,
+        role: data.role,
+      },
+      select: {
+        id: true,
+        clerkId: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    return successResponse(dbUser, 'Team member created successfully');
+  } catch (error) {
+    if (error instanceof ZodError) return errorResponse(error.errors[0].message, 400);
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') return errorResponse('A user with this email already exists', 409);
+    }
+    if (error instanceof Error && error.message === 'Unauthorized') return errorResponse('Unauthorized', 401);
+    if (error instanceof Error && error.message === 'Forbidden') return errorResponse('Forbidden', 403);
+    // Handle Clerk API errors
+    if (error && typeof error === 'object' && 'errors' in error) {
+      const clerkErrors = (error as { errors: Array<{ message: string }> }).errors;
+      if (clerkErrors?.[0]?.message) {
+        return errorResponse(clerkErrors[0].message, 400);
+      }
+    }
     console.error('[API Error]', error);
     return errorResponse('Internal server error', 500);
   }
