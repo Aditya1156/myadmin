@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { type, data } = event;
+    const MASTER_ADMIN_EMAIL = 'adityaissc7@gmail.com';
 
     switch (type) {
       case 'user.created': {
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
         const name = `${data.first_name ?? ''} ${data.last_name ?? ''}`.trim() || 'Unknown';
         const email = primaryEmail?.email_address ?? '';
         const phone = data.phone_numbers?.[0]?.phone_number ?? null;
+        const isMasterAdmin = email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
         await prisma.user.upsert({
           where: { clerkId: data.id },
@@ -79,13 +81,14 @@ export async function POST(request: NextRequest) {
             name,
             email,
             phone,
+            ...(isMasterAdmin && { role: 'ADMIN' }),
           },
           create: {
             clerkId: data.id,
             name,
             email,
             phone,
-            role: 'SALES',
+            role: isMasterAdmin ? 'ADMIN' : 'SALES',
           },
         });
 
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest) {
         const name = `${data.first_name ?? ''} ${data.last_name ?? ''}`.trim() || 'Unknown';
         const email = primaryEmail?.email_address ?? '';
         const phone = data.phone_numbers?.[0]?.phone_number ?? null;
+        const isMasterAdmin = email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
         await prisma.user.upsert({
           where: { clerkId: data.id },
@@ -106,13 +110,14 @@ export async function POST(request: NextRequest) {
             name,
             email,
             phone,
+            ...(isMasterAdmin && { role: 'ADMIN' }),
           },
           create: {
             clerkId: data.id,
             name,
             email,
             phone,
-            role: 'SALES',
+            role: isMasterAdmin ? 'ADMIN' : 'SALES',
           },
         });
 

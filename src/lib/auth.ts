@@ -41,23 +41,30 @@ export function isAdminOrManager(user: User): boolean {
   return user.role === 'ADMIN' || user.role === 'MANAGER';
 }
 
+// Master admin email — automatically gets ADMIN role on first sync
+const MASTER_ADMIN_EMAIL = 'adityaissc7@gmail.com';
+
 export async function syncUser(): Promise<User> {
   const clerkUser = await currentUser();
   if (!clerkUser) {
     throw new Error('No Clerk user found');
   }
 
+  const email = clerkUser.emailAddresses[0]?.emailAddress ?? '';
+  const isMasterAdmin = email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+
   const user = await prisma.user.upsert({
     where: { clerkId: clerkUser.id },
     update: {
       name: `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim(),
-      email: clerkUser.emailAddresses[0]?.emailAddress ?? '',
+      email,
+      ...(isMasterAdmin && { role: 'ADMIN' as Role }),
     },
     create: {
       clerkId: clerkUser.id,
       name: `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim(),
-      email: clerkUser.emailAddresses[0]?.emailAddress ?? '',
-      role: 'SALES',
+      email,
+      role: isMasterAdmin ? 'ADMIN' : 'SALES',
     },
   });
 
