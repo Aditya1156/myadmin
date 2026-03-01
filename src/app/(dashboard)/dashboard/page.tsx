@@ -12,6 +12,7 @@ import {
   MessageSquare,
   PartyPopper,
   RefreshCw,
+  LayoutGrid,
 } from 'lucide-react';
 import {
   BarChart,
@@ -27,10 +28,52 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { StatCard } from '@/components/shared/stat-card';
 import { PageHeader } from '@/components/shared/page-header';
 import { formatCurrency, formatRelativeTime, generateWhatsAppLink } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/use-current-user';
+
+// ── Dashboard Widget Config ─────────────────────────────────────────────────
+
+interface WidgetConfig {
+  kpiCards: boolean;
+  activityFeed: boolean;
+  followUps: boolean;
+  cityChart: boolean;
+  serviceChart: boolean;
+  teamTable: boolean;
+}
+
+const DEFAULT_WIDGETS: WidgetConfig = {
+  kpiCards: true,
+  activityFeed: true,
+  followUps: true,
+  cityChart: true,
+  serviceChart: true,
+  teamTable: true,
+};
+
+function loadWidgetConfig(): WidgetConfig {
+  if (typeof window === 'undefined') return DEFAULT_WIDGETS;
+  try {
+    const saved = localStorage.getItem('nexcrm-dashboard-widgets');
+    if (saved) return { ...DEFAULT_WIDGETS, ...JSON.parse(saved) };
+  } catch { /* ignore */ }
+  return DEFAULT_WIDGETS;
+}
+
+function saveWidgetConfig(config: WidgetConfig) {
+  try {
+    localStorage.setItem('nexcrm-dashboard-widgets', JSON.stringify(config));
+  } catch { /* ignore */ }
+}
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -146,6 +189,20 @@ function formatServiceLabel(service: string): string {
 
 export default function DashboardPage() {
   const { dbUser } = useCurrentUser();
+  const [widgets, setWidgets] = useState<WidgetConfig>(DEFAULT_WIDGETS);
+  const [showWidgetConfig, setShowWidgetConfig] = useState(false);
+
+  useEffect(() => {
+    setWidgets(loadWidgetConfig());
+  }, []);
+
+  function toggleWidget(key: keyof WidgetConfig) {
+    setWidgets((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      saveWidgetConfig(updated);
+      return updated;
+    });
+  }
 
   // State for each data section
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -238,10 +295,16 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description="Overview of your CRM performance and activity."
+        action={
+          <Button variant="outline" size="sm" onClick={() => setShowWidgetConfig(true)}>
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Customize
+          </Button>
+        }
       />
 
       {/* ── Section 1: KPI Stat Cards ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {widgets.kpiCards && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Cities"
           value={loadingOverview && loadingCities ? 0 : totalCities}
@@ -306,12 +369,12 @@ export default function DashboardPage() {
           color="purple"
           loading={loadingOverview}
         />
-      </div>
+      </div>}
 
       {/* ── Section 2: Activity Feed + Follow-ups ──────────────────────── */}
       <div className="grid gap-4 md:grid-cols-5">
         {/* Left: Recent Activity (col-span-3) */}
-        <Card className="md:col-span-3">
+        {widgets.activityFeed && <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
@@ -371,10 +434,10 @@ export default function DashboardPage() {
               </ScrollArea>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Right: Today's Follow-ups (col-span-2) */}
-        <Card className="md:col-span-2">
+        {widgets.followUps && <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Today&apos;s Follow-ups</CardTitle>
           </CardHeader>
@@ -454,13 +517,13 @@ export default function DashboardPage() {
               </ScrollArea>
             )}
           </CardContent>
-        </Card>
+        </Card>}
       </div>
 
       {/* ── Section 3: Charts ──────────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Left: City Performance */}
-        <Card>
+        {widgets.cityChart && <Card>
           <CardHeader>
             <CardTitle>City Performance</CardTitle>
           </CardHeader>
@@ -495,10 +558,10 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Right: Service Demand */}
-        <Card>
+        {widgets.serviceChart && <Card>
           <CardHeader>
             <CardTitle>Service Demand</CardTitle>
           </CardHeader>
@@ -535,11 +598,11 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             )}
           </CardContent>
-        </Card>
+        </Card>}
       </div>
 
       {/* ── Section 4: Top Performers (ADMIN/MANAGER only) ────────────── */}
-      {isAdminOrManager && !loadingTeam && teamData.length > 0 && (
+      {widgets.teamTable && isAdminOrManager && !loadingTeam && teamData.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
@@ -593,7 +656,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {isAdminOrManager && loadingTeam && (
+      {widgets.teamTable && isAdminOrManager && loadingTeam && (
         <Card>
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
@@ -616,6 +679,39 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Widget Config Dialog */}
+      <Dialog open={showWidgetConfig} onOpenChange={setShowWidgetConfig}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Customize Dashboard</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Toggle which sections are visible on your dashboard.
+            </p>
+            {[
+              { key: 'kpiCards' as const, label: 'KPI Cards', desc: 'Revenue, deals, businesses stats' },
+              { key: 'activityFeed' as const, label: 'Recent Activity', desc: 'Latest team activities' },
+              { key: 'followUps' as const, label: "Today's Follow-ups", desc: 'Scheduled follow-ups' },
+              { key: 'cityChart' as const, label: 'City Performance', desc: 'City-wise bar chart' },
+              { key: 'serviceChart' as const, label: 'Service Demand', desc: 'Service demand chart' },
+              { key: 'teamTable' as const, label: 'Top Performers', desc: 'Team leaderboard (Admin)' },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+                <Switch
+                  checked={widgets[item.key]}
+                  onCheckedChange={() => toggleWidget(item.key)}
+                />
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { z } from 'zod';
 import { clerkClient } from '@clerk/nextjs/server';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,6 +137,14 @@ export async function POST(request: NextRequest) {
         role: true,
         isActive: true,
       },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: 'user_created',
+      entityType: 'User',
+      entityId: dbUser.id,
+      details: { name: data.name, email: data.email, role: data.role },
     });
 
     return successResponse(dbUser, 'Team member created successfully');

@@ -15,6 +15,8 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  ScrollText,
+  FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,7 +38,9 @@ const navItems = [
   { label: 'Follow-ups', href: '/followups', icon: Bell, showBadge: true },
   { label: 'Renewals', href: '/renewals', icon: RefreshCw, showRenewalBadge: true },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { label: 'Reports', href: '/reports', icon: FileBarChart, adminOnly: true },
   { label: 'Team', href: '/team', icon: Users, adminOnly: true },
+  { label: 'Activity Logs', href: '/activity-logs', icon: ScrollText, adminOnly: true },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
