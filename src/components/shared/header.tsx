@@ -19,7 +19,6 @@ const routeLabels: Record<string, string> = {
   '/followups': 'Follow-ups',
   '/renewals': 'Renewals',
   '/analytics': 'Analytics',
-  '/leads': 'Website Leads',
   '/reports': 'Reports',
   '/team': 'Team',
   '/activity-logs': 'Activity Logs',
