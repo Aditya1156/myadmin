@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { Moon, Sun, Search } from 'lucide-react';
+import { Bell, Moon, Sun, Search } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { MobileSidebar } from './sidebar';
-import { NotificationDropdown } from './notification-dropdown';
+import { useFollowUpCount } from '@/hooks/use-follow-up-count';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,11 +18,8 @@ const routeLabels: Record<string, string> = {
   '/cities': 'Cities',
   '/businesses': 'Businesses',
   '/followups': 'Follow-ups',
-  '/renewals': 'Renewals',
   '/analytics': 'Analytics',
-  '/reports': 'Reports',
   '/team': 'Team',
-  '/activity-logs': 'Activity Logs',
   '/settings': 'Settings',
 };
 
@@ -50,6 +48,7 @@ function getBreadcrumb(pathname: string): { label: string; href?: string }[] {
 export function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { count: overdueCount } = useFollowUpCount();
   const [search, setSearch] = useState('');
   const router = useRouter();
 
@@ -95,7 +94,19 @@ export function Header() {
           />
         </form>
 
-        <NotificationDropdown />
+        <Link href="/followups">
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-4 w-4" />
+            {overdueCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {overdueCount > 9 ? '9+' : overdueCount}
+              </Badge>
+            )}
+          </Button>
+        </Link>
 
         <Button
           variant="ghost"

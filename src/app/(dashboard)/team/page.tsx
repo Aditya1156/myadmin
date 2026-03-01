@@ -37,7 +37,6 @@ import {
   Trophy,
   Medal,
   Award,
-  KeyRound,
 } from 'lucide-react';
 
 interface TeamMember {
@@ -75,10 +74,6 @@ export default function TeamPage() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('SALES');
   const [creating, setCreating] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const [resetUser, setResetUser] = useState<TeamMember | null>(null);
-  const [resetPassword, setResetPassword] = useState('');
-  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!userLoading && dbUser && dbUser.role === 'SALES') {
@@ -176,37 +171,6 @@ export default function TeamPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to create user');
     } finally {
       setCreating(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!resetUser || !resetPassword) {
-      toast.error('Please enter a new password');
-      return;
-    }
-    if (resetPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    setResetting(true);
-    try {
-      const res = await fetch(`/api/users/${resetUser.id}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword: resetPassword }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to reset password');
-      }
-      toast.success(`Password reset for ${resetUser.name}`);
-      setShowResetDialog(false);
-      setResetUser(null);
-      setResetPassword('');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reset password');
-    } finally {
-      setResetting(false);
     }
   };
 
@@ -347,27 +311,13 @@ export default function TeamPage() {
                       </td>
                       {dbUser?.role === 'ADMIN' && (
                         <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditDialog(member)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setResetUser(member);
-                                setResetPassword('');
-                                setShowResetDialog(true);
-                              }}
-                              title="Reset Password"
-                            >
-                              <KeyRound className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(member)}
+                          >
+                            Edit
+                          </Button>
                         </td>
                       )}
                     </tr>
@@ -484,37 +434,6 @@ export default function TeamPage() {
               </Button>
               <Button onClick={handleSaveUser} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Password Dialog */}
-      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Set a new password for <span className="font-medium text-foreground">{resetUser?.name}</span> ({resetUser?.email})
-            </p>
-            <div>
-              <Label>New Password</Label>
-              <Input
-                type="password"
-                placeholder="Min 8 characters"
-                value={resetPassword}
-                onChange={(e) => setResetPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowResetDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleResetPassword} disabled={resetting}>
-                {resetting ? 'Resetting...' : 'Reset Password'}
               </Button>
             </div>
           </div>

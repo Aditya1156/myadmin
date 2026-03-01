@@ -120,49 +120,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignedCities City[]         @relation("AssignedSalesRep")
-  businesses     Business[]     @relation("CreatedByUser")
+  assignedCities City[]     @relation("AssignedSalesRep")
+  businesses     Business[] @relation("CreatedByUser")
   activities     Activity[]
   deals          Deal[]
-  notifications  Notification[]
-  auditLogs      AuditLog[]
 
   @@index([clerkId])
   @@index([role])
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  type      String   // deal_update, renewal_due, follow_up_overdue, team_update
-  title     String
-  message   String
-  link      String?  // optional link to navigate to
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
-
-  @@index([userId, isRead])
-  @@index([createdAt])
-}
-
-model AuditLog {
-  id         String   @id @default(cuid())
-  action     String   // user_created, role_changed, business_deleted, deal_created, etc.
-  entityType String   // User, Business, Deal, City, etc.
-  entityId   String?
-  details    String?  // JSON string with extra details
-  ipAddress  String?
-  createdAt  DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
-
-  @@index([userId])
-  @@index([action])
-  @@index([entityType])
-  @@index([createdAt])
 }
 
 model City {

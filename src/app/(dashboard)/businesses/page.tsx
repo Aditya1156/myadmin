@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type ColumnDef,
-  type RowSelectionState,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -17,11 +16,9 @@ import {
   Plus,
   Filter,
   Download,
-  Upload,
   MoreHorizontal,
   Phone,
   MessageSquare,
-  Mail,
   Eye,
   Pencil,
   Activity,
@@ -71,20 +68,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+
 
 import { useDebounce } from '@/hooks/use-debounce';
-import { useCurrentUser } from '@/hooks/use-current-user';
 import { formatDate, generateWhatsAppLink, cn } from '@/lib/utils';
 import {
   BUSINESS_CATEGORIES,
@@ -217,21 +205,12 @@ const PAGE_SIZE = 25;
 export default function BusinessesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { dbUser } = useCurrentUser();
-  const csvInputRef = useRef<HTMLInputElement>(null);
 
   // ---- State ----
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [meta, setMeta] = useState<ApiMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [bulkAction, setBulkAction] = useState('');
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [emailBusiness, setEmailBusiness] = useState<Business | null>(null);
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
 
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
@@ -336,83 +315,6 @@ export default function BusinessesPage() {
     }
   }
 
-  // ---- CSV Import handler ----
-  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/businesses/import', {
-        method: 'POST',
-        body: formData,
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Import failed');
-      toast.success(
-        `Import complete: ${json.data?.inserted ?? 0} added, ${json.data?.failed ?? 0} failed`
-      );
-      fetchBusinesses();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setImporting(false);
-      if (csvInputRef.current) csvInputRef.current.value = '';
-    }
-  }
-
-  // ---- Bulk action handler ----
-  const selectedBusinessIds = Object.keys(rowSelection)
-    .filter((key) => rowSelection[key])
-    .map((key) => businesses[parseInt(key)]?.id)
-    .filter(Boolean);
-
-  async function handleBulkAction(action: string, value?: string) {
-    if (selectedBusinessIds.length === 0) {
-      toast.error('Select at least one business');
-      return;
-    }
-    if (action === 'delete' && !confirm(`Delete ${selectedBusinessIds.length} businesses? This cannot be undone.`)) {
-      return;
-    }
-    try {
-      const res = await fetch('/api/businesses/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          businessIds: selectedBusinessIds,
-          value,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Bulk action failed');
-      toast.success(json.message || `${json.data?.affected ?? 0} businesses updated`);
-      setRowSelection({});
-      fetchBusinesses();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Bulk action failed');
-    }
-  }
-
-  // ---- Email handler ----
-  function openEmailDialog(business: Business) {
-    setEmailBusiness(business);
-    setEmailSubject(`Regarding ${business.businessName}`);
-    setEmailBody(`Dear ${business.ownerName},\n\nThank you for your interest in our services.\n\nBest regards,\nTheNextURL Team`);
-    setShowEmailDialog(true);
-  }
-
-  function sendEmail() {
-    if (!emailBusiness) return;
-    // Open mailto link (works universally without email server setup)
-    const mailto = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    window.open(mailto, '_blank');
-    setShowEmailDialog(false);
-    toast.success('Email client opened');
-  }
-
   // ---- Filter helpers ----
   function toggleCategoryFilter(value: string) {
     setFilters((prev) => ({
@@ -440,25 +342,6 @@ export default function BusinessesPage() {
 
   // ---- Table columns ----
   const columns: ColumnDef<Business>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: 'businessName',
       header: 'Business Name',
@@ -613,10 +496,6 @@ export default function BusinessesPage() {
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEmailDialog(business)}>
-                <Mail className="mr-2 h-4 w-4" />
-                Send Email
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() =>
@@ -642,8 +521,6 @@ export default function BusinessesPage() {
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount: meta?.totalPages ?? -1,
-    onRowSelectionChange: setRowSelection,
-    state: { rowSelection },
   });
 
   // ---- Render ----
@@ -816,28 +693,6 @@ export default function BusinessesPage() {
             </SheetContent>
           </Sheet>
 
-          {/* CSV Import */}
-          <input
-            ref={csvInputRef}
-            type="file"
-            accept=".csv,.xlsx"
-            onChange={handleCsvImport}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => csvInputRef.current?.click()}
-            disabled={importing}
-          >
-            {importing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="mr-2 h-4 w-4" />
-            )}
-            Import
-          </Button>
-
           {/* Export */}
           <Button
             variant="outline"
@@ -862,50 +717,6 @@ export default function BusinessesPage() {
           </Link>
         </div>
       </div>
-
-      {/* Bulk Actions Bar */}
-      {selectedBusinessIds.length > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2">
-          <span className="text-sm font-medium">
-            {selectedBusinessIds.length} selected
-          </span>
-          <Select value={bulkAction} onValueChange={(val) => {
-            if (val === 'delete') {
-              handleBulkAction('delete');
-            } else if (val.startsWith('status_')) {
-              handleBulkAction('update_status', val.replace('status_', ''));
-            } else if (val.startsWith('priority_')) {
-              handleBulkAction('update_priority', val.replace('priority_', ''));
-            }
-            setBulkAction('');
-          }}>
-            <SelectTrigger className="w-[200px] h-8">
-              <SelectValue placeholder="Bulk Actions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="status_VISITED">Set Visited</SelectItem>
-              <SelectItem value="status_INTERESTED">Set Interested</SelectItem>
-              <SelectItem value="status_CLOSED_WON">Set Won</SelectItem>
-              <SelectItem value="status_CLOSED_LOST">Set Lost</SelectItem>
-              <SelectItem value="priority_HIGH">Priority: High</SelectItem>
-              <SelectItem value="priority_MEDIUM">Priority: Medium</SelectItem>
-              <SelectItem value="priority_LOW">Priority: Low</SelectItem>
-              {(dbUser?.role === 'ADMIN' || dbUser?.role === 'MANAGER') && (
-                <SelectItem value="delete">
-                  <span className="text-destructive">Delete Selected</span>
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setRowSelection({})}
-          >
-            Clear
-          </Button>
-        </div>
-      )}
 
       {/* Table */}
       {loading ? (
@@ -1004,44 +815,6 @@ export default function BusinessesPage() {
           )}
         </>
       )}
-
-      {/* Email Dialog */}
-      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send Email</DialogTitle>
-            <DialogDescription>
-              Compose an email to {emailBusiness?.ownerName} ({emailBusiness?.businessName})
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>Subject</Label>
-              <Input
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Message</Label>
-              <Textarea
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                rows={6}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={sendEmail}>
-              <Mail className="h-4 w-4 mr-2" />
-              Open in Email Client
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
