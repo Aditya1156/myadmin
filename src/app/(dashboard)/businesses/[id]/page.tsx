@@ -147,6 +147,7 @@ interface Deal {
 
 interface Business {
   id: string;
+  familyId: string | null;
   businessName: string;
   ownerName: string;
   phone: string;
@@ -454,6 +455,34 @@ export default function BusinessDetailPage() {
                   <p className="text-xs text-muted-foreground">Business Name</p>
                   <p className="text-xl font-semibold">{business.businessName}</p>
                 </div>
+
+                {/* Family ID */}
+                {business.familyId && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-muted-foreground">Family ID</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="outline" className="font-mono text-sm tracking-wider px-3 py-1">
+                        {business.familyId}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(business.familyId!);
+                          toast.success('Family ID copied');
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Link href={`/lookup?q=${business.familyId}`}>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs">
+                          Lookup
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
                 {/* Owner */}
                 <div>

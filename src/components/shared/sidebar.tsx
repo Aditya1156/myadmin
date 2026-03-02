@@ -18,6 +18,7 @@ import {
   Inbox,
   FileBarChart,
   ScrollText,
+  SearchCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ const navItems = [
   { label: 'Businesses', href: '/businesses', icon: Building2 },
   { label: 'Follow-ups', href: '/followups', icon: Bell, showBadge: true },
   { label: 'Renewals', href: '/renewals', icon: RefreshCw, showRenewalBadge: true },
+  { label: 'Client Lookup', href: '/lookup', icon: SearchCheck },
   { label: 'Website Leads', href: '/leads', icon: Inbox, adminOnly: true },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Reports', href: '/reports', icon: FileBarChart, adminOnly: true },

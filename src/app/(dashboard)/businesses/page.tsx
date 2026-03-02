@@ -100,6 +100,7 @@ interface Area {
 
 interface Business {
   id: string;
+  familyId?: string | null;
   businessName: string;
   ownerName: string;
   phone: string;
@@ -422,6 +423,19 @@ export default function BusinessesPage() {
           {row.original.businessName}
         </Link>
       ),
+    },
+    {
+      accessorKey: 'familyId',
+      header: 'Family ID',
+      cell: ({ row }) => {
+        const fid = row.original.familyId;
+        if (!fid) return <span className="text-muted-foreground text-xs">-</span>;
+        return (
+          <Link href={`/lookup?q=${fid}`} className="font-mono text-xs text-primary hover:underline">
+            {fid}
+          </Link>
+        );
+      },
     },
     {
       accessorKey: 'ownerName',

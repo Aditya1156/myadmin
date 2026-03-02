@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { CreateDealSchema } from '@/lib/validations';
+import { assignFamilyId } from '@/lib/family-id';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 
@@ -141,6 +142,9 @@ export async function POST(request: NextRequest) {
 
       return newDeal;
     });
+
+    // Auto-assign Family ID when first deal is created
+    assignFamilyId(data.businessId).catch(console.error);
 
     return successResponse(deal, 'Deal created successfully');
   } catch (error) {

@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
         { businessName: { contains: searchTerm, mode: 'insensitive' } },
         { ownerName: { contains: searchTerm, mode: 'insensitive' } },
         { phone: { contains: searchTerm } },
+        { familyId: { contains: searchTerm, mode: 'insensitive' } },
       ];
     }
 
@@ -123,6 +124,7 @@ export async function GET(request: NextRequest) {
         where,
         select: {
           id: true,
+          familyId: true,
           businessName: true,
           ownerName: true,
           phone: true,

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       where: { id, isActive: true },
       select: {
         id: true,
+        familyId: true,
         businessName: true,
         ownerName: true,
         phone: true,

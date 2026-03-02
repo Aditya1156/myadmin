@@ -18,6 +18,7 @@ const routeLabels: Record<string, string> = {
   '/businesses': 'Businesses',
   '/followups': 'Follow-ups',
   '/renewals': 'Renewals',
+  '/lookup': 'Client Lookup',
   '/leads': 'Website Leads',
   '/analytics': 'Analytics',
   '/reports': 'Reports',
@@ -58,10 +59,17 @@ export function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (search.trim()) {
-      router.push(`/businesses?search=${encodeURIComponent(search.trim())}`);
-      setSearch('');
+    const q = search.trim();
+    if (!q) return;
+
+    // Detect Family ID pattern (e.g. KA-SHM-GPL-SAL-00001)
+    const isFamilyId = /^[A-Z]{2}-[A-Z]{2,4}-[A-Z]{2,4}-[A-Z]{2,4}-\d+$/i.test(q);
+    if (isFamilyId) {
+      router.push(`/lookup?q=${encodeURIComponent(q.toUpperCase())}`);
+    } else {
+      router.push(`/businesses?search=${encodeURIComponent(q)}`);
     }
+    setSearch('');
   };
 
   return (

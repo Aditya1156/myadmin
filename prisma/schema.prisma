@@ -225,6 +225,7 @@ model Area {
 
 model Business {
   id              String           @id @default(cuid())
+  familyId        String?          @unique
   businessName    String
   ownerName       String
   phone           String
@@ -265,6 +266,7 @@ model Business {
   @@index([followUpDate])
   @@index([createdById])
   @@index([category])
+  @@index([familyId])
 }
 
 model Activity {
