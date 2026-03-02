@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -16,6 +16,7 @@ import {
   Plus,
   Filter,
   Download,
+  Upload,
   MoreHorizontal,
   Phone,
   MessageSquare,
@@ -211,6 +212,8 @@ export default function BusinessesPage() {
   const [meta, setMeta] = useState<ApiMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
@@ -312,6 +315,72 @@ export default function BusinessesPage() {
       toast.error('Export failed');
     } finally {
       setExporting(false);
+    }
+  }
+
+  // ---- CSV Import handler ----
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      let imported = 0;
+      let failed = 0;
+
+      for (const row of rows) {
+        try {
+          const body: Record<string, unknown> = {
+            businessName: row['Business Name'] || row['businessName'] || '',
+            ownerName: row['Owner'] || row['ownerName'] || '',
+            phone: row['Phone'] || row['phone'] || '',
+            category: (row['Category'] || row['category'] || 'OTHER').toUpperCase().replace(/ /g, '_'),
+            status: (row['Status'] || row['status'] || 'NOT_VISITED').toUpperCase().replace(/ /g, '_'),
+            priority: (row['Priority'] || row['priority'] || 'MEDIUM').toUpperCase(),
+            address: row['Address'] || row['address'] || '',
+            notes: row['Notes'] || row['notes'] || '',
+            cityId: row['CityId'] || row['cityId'] || '',
+          };
+
+          if (!body.businessName || !body.ownerName || !body.phone) {
+            failed++;
+            continue;
+          }
+
+          // If no cityId, use first available city
+          if (!body.cityId && cities.length > 0) {
+            body.cityId = cities[0].id;
+          }
+
+          const res = await fetch('/api/businesses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (res.ok) imported++;
+          else failed++;
+        } catch {
+          failed++;
+        }
+      }
+
+      toast.success(`Imported ${imported} businesses${failed > 0 ? `, ${failed} failed` : ''}`);
+      fetchBusinesses();
+    } catch {
+      toast.error('Failed to read file');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -692,6 +761,28 @@ export default function BusinessesPage() {
               </SheetFooter>
             </SheetContent>
           </Sheet>
+
+          {/* Import CSV */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
+            {importing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            Import
+          </Button>
 
           {/* Export */}
           <Button
